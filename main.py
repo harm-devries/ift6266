@@ -68,7 +68,7 @@ cost = Softmax().categorical_cross_entropy(y, y_hat)
 # flat_indices = y.flatten() + range_ * 2
 # log_prob_of = flat_log_prob[flat_indices].reshape(y.shape, ndim=2)
 # cost = -log_prob_of.mean()
-cost.name = 'cost'
+cost.name = 'nll'
 
 # Print sizes to check
 print("Representation sizes:")
@@ -92,13 +92,18 @@ from blocks.extensions.monitoring import TrainingDataMonitoring
 
 from dataset import DogsVsCats
 from streams import RandomPatch
+from extensions import MyLearningRateSchedule, EarlyStoppingDump
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme, ShuffledScheme
 
 batch_size = 64
 training_stream = DataStream(DogsVsCats('train'),
-                             iteration_scheme=ShuffledScheme(20000, batch_size))
+  iteration_scheme=ShuffledScheme(20000, batch_size))
 training_stream = RandomPatch(training_stream, 270, (260, 260))
+
+valid_stream = DataStream(DogsVsCats('valid'),
+                iteration_scheme=SequentialScheme(2000, batch_size))
+valid_stream = RandomPatch(valid_stream, 270, (260, 260))
 
 cg = ComputationGraph([cost])
 algorithm = GradientDescent(cost=cost, params=cg.parameters, step_rule=Momentum(learning_rate=1e-4,
@@ -107,22 +112,19 @@ algorithm = GradientDescent(cost=cost, params=cg.parameters, step_rule=Momentum(
 main_loop = MainLoop(
     data_stream=training_stream, algorithm=algorithm,
     extensions=[
-        FinishAfter(after_n_epochs=80),
+        FinishAfter(after_n_epochs=200),
         TrainingDataMonitoring(
             [cost, misclass],
             prefix='train',
             after_every_epoch=True),
         DataStreamMonitoring(
             [cost, misclass],
-            RandomPatch(DataStream(
-                DogsVsCats('valid'),
-                iteration_scheme=SequentialScheme(2500, batch_size)),
-                270, (260, 260)),
-            prefix='valid'
-        ),
-        #Plot('Dogs vs cats', channels=[['cost'], ['misclass']], after_every_batch=True),
-        Printing(),
+            valid_stream,
+            prefix='valid'),
         SerializeMainLoop('dogs_vs_cats.pkl', after_every_epoch=True),
+        EarlyStoppingDump('/home/user/Documents/ift6266', 'valid_nll'),
+        MyLearningRateSchedule('valid_nll', 2),
+        Printing()
     ]
 )
 main_loop.run()
