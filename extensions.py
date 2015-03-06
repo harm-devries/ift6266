@@ -45,13 +45,13 @@ class EarlyStoppingDump(SimpleExtension):
 		self.state_path = state_path
 		self.channel = channel
 		self.manager = MainLoopDumpManager(state_path)
-		self.previous = float('inf')
+		self.best = float('inf')
 
 	def do(self, which_callback, *args):
 		log = self.main_loop.log
 		current = log.current_row[self.channel]
 		try:
-			if current > self.previous:
+			if current < self.best:
 				self.manager.dump_parameters(self.main_loop)
 
 			self.manager.dump_iteration_state(self.main_loop)
