@@ -40,7 +40,7 @@ class EarlyStoppingDump(SimpleExtension):
 	"""
 
 	def __init__(self, state_path, channel, **kwargs):
-		kwargs.setdefault("after_every_epoch", True)
+		kwargs.setdefault("after_epoch", True)
 		super(EarlyStoppingDump, self).__init__(**kwargs)
 		self.state_path = state_path
 		self.channel = channel
@@ -52,6 +52,7 @@ class EarlyStoppingDump(SimpleExtension):
 		current = log.current_row[self.channel]
 		try:
 			if current < self.best:
+				self.best = current
 				self.manager.dump_parameters(self.main_loop)
 
 			self.manager.dump_iteration_state(self.main_loop)

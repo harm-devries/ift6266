@@ -10,7 +10,7 @@ from fuel.utils import do_not_pickle_attributes
 class DogsVsCats(IndexableDataset):
     provides_sources = ('features', 'targets')
 
-    def __init__(self, which_set):
+    def __init__(self, which_set, normalize=True):
         if which_set == 'train':
             self.start = 0
             self.stop = 20000
@@ -22,6 +22,7 @@ class DogsVsCats(IndexableDataset):
             self.stop = 25000
         else:
             raise ValueError
+        self.normalize = normalize    
         self.load()
 
     def load(self):
@@ -36,10 +37,13 @@ class DogsVsCats(IndexableDataset):
         if state is not None:
             raise ValueError
         images, targets = [], []
-        request = sorted([i + self.start for i in request])
+        request = sorted(request)
+        request = [r + self.start for r in request]
         for image, shape, target in zip(self.f['images'][request],
                                         self.f['shapes'][request],
                                         self.f['labels'][request]):
+            if self.normalize:
+                image = (image - 127.0)
             images.append(image.reshape(shape))
             targets.append([target])
         return self.filter_sources((images, targets))
